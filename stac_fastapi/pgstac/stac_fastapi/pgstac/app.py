@@ -28,10 +28,12 @@ from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 
+from .custom import custom_dbfunc
+
 settings = Settings()
 extensions_map = {
     "transaction": TransactionExtension(
-        client=TransactionsClient(),
+        client=TransactionsClient(db_func=custom_dbfunc),
         settings=settings,
         response_class=ORJSONResponse,
     ),
@@ -41,7 +43,9 @@ extensions_map = {
     "pagination": TokenPaginationExtension(),
     "context": ContextExtension(),
     "filter": FilterExtension(client=FiltersClient()),
-    "bulk_transactions": BulkTransactionExtension(client=BulkTransactionsClient()),
+    "bulk_transactions": BulkTransactionExtension(
+        client=BulkTransactionsClient(db_func=custom_dbfunc)
+    ),
 }
 
 if enabled_extensions := os.getenv("ENABLED_EXTENSIONS"):

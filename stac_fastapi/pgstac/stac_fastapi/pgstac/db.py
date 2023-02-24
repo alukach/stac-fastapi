@@ -8,7 +8,7 @@ import attr
 import orjson
 from asyncpg import exceptions, pool
 from buildpg import asyncpg, render
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 from stac_fastapi.types.errors import (
     ConflictError,
@@ -53,7 +53,7 @@ async def close_db_connection(app: FastAPI) -> None:
     await app.state.writepool.close()
 
 
-async def dbfunc(pool: pool, func: str, arg: Union[str, Dict]):
+async def dbfunc(pool: pool, func: str, arg: Union[str, Dict], request: Request):
     """Wrap PLPGSQL Functions.
 
     Keyword arguments:
@@ -61,6 +61,7 @@ async def dbfunc(pool: pool, func: str, arg: Union[str, Dict]):
     func -- the name of the PostgreSQL function to call
     arg -- the argument to the PostgreSQL function as either a string
     or a dict that will be converted into jsonb
+    request -- the fastapi request associated with the call
     """
     with translate_pgstac_errors():
         if isinstance(arg, str):

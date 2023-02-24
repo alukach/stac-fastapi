@@ -25,8 +25,13 @@ logger.setLevel(logging.INFO)
 class TransactionsClient(AsyncBaseTransactionsClient):
     """Transactions extension specific CRUD operations."""
 
+    db_func = attr.ib(default=dbfunc)  # Grant ability to customize dbfunc
+
     async def create_item(
-        self, collection_id: str, item: stac_types.Item, **kwargs
+        self,
+        collection_id: str,
+        item: stac_types.Item,
+        **kwargs,
     ) -> Optional[Union[stac_types.Item, Response]]:
         """Create item."""
         body_collection_id = item.get("collection")
@@ -38,7 +43,7 @@ class TransactionsClient(AsyncBaseTransactionsClient):
         item["collection"] = collection_id
         request = kwargs["request"]
         pool = request.app.state.writepool
-        await dbfunc(pool, "create_item", item)
+        await self.db_func(pool, "create_item", item, request)
         item["links"] = await ItemLinks(
             collection_id=collection_id,
             item_id=item["id"],
@@ -65,7 +70,7 @@ class TransactionsClient(AsyncBaseTransactionsClient):
             )
         request = kwargs["request"]
         pool = request.app.state.writepool
-        await dbfunc(pool, "update_item", item)
+        await self.db_func(pool, "update_item", item, request)
         item["links"] = await ItemLinks(
             collection_id=collection_id,
             item_id=item["id"],
@@ -79,7 +84,7 @@ class TransactionsClient(AsyncBaseTransactionsClient):
         """Create collection."""
         request = kwargs["request"]
         pool = request.app.state.writepool
-        await dbfunc(pool, "create_collection", collection)
+        await self.db_func(pool, "create_collection", collection, request)
         collection["links"] = await CollectionLinks(
             collection_id=collection["id"], request=request
         ).get_links(extra_links=collection.get("links"))
@@ -92,7 +97,7 @@ class TransactionsClient(AsyncBaseTransactionsClient):
         """Update collection."""
         request = kwargs["request"]
         pool = request.app.state.writepool
-        await dbfunc(pool, "update_collection", collection)
+        await self.db_func(pool, "update_collection", collection, request)
         collection["links"] = await CollectionLinks(
             collection_id=collection["id"], request=request
         ).get_links(extra_links=collection.get("links"))
@@ -120,7 +125,7 @@ class TransactionsClient(AsyncBaseTransactionsClient):
         """Delete collection."""
         request = kwargs["request"]
         pool = request.app.state.writepool
-        await dbfunc(pool, "delete_collection", collection_id)
+        await self.db_func(pool, "delete_collection", collection_id, request)
         return JSONResponse({"deleted collection": collection_id})
 
 
@@ -128,12 +133,14 @@ class TransactionsClient(AsyncBaseTransactionsClient):
 class BulkTransactionsClient(AsyncBaseBulkTransactionsClient):
     """Postgres bulk transactions."""
 
+    db_func = attr.ib(default=dbfunc)  # Grant ability to customize dbfunc
+
     async def bulk_item_insert(self, items: Items, **kwargs) -> str:
         """Bulk item insertion using pgstac."""
         request = kwargs["request"]
         pool = request.app.state.writepool
         items = list(items.items.values())
-        await dbfunc(pool, "create_items", items)
+        await self.db_func(pool, "create_items", items, request)
 
         return_msg = f"Successfully added {len(items)} items."
         return return_msg
